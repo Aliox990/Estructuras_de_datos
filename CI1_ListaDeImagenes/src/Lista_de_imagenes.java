@@ -6,23 +6,54 @@ import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
- *
- * @author Alonso
+ * Aplicación GUI para gestionar una lista doblemente enlazada de imágenes.
+ * Permite agregar, eliminar y navegar entre imágenes con sus descripciones.
+ * 
+ * Esta clase implementa una interfaz gráfica que permite:
+ * <ul>
+ *   <li>Agregar nuevas imágenes con nombre y descripción</li>
+ *   <li>Navegar entre las imágenes (primera, última, anterior, siguiente)</li>
+ *   <li>Eliminar imágenes de la lista</li>
+ *   <li>Visualizar imágenes con sus metadatos</li>
+ * </ul>
+ * 
+ * @author Cesar de Jesus Becerra Vera
+ * @author Christian Alonso Arevalos Gonzalez
+ * @version 1.0
+ * @since 2026-03-10
  */
 public class Lista_de_imagenes extends javax.swing.JFrame {
-    
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(Lista_de_imagenes.class.getName());
+    /** Ruta temporal de la imagen seleccionada */
     String temporalImagen;
-    Nodo Frente=null, Final=null, aux=null;
-    Nodo nuevo, actual;
+    /** Puntero al primer nodo de la lista */
+    Nodo Frente=null;
+    /** Puntero al último nodo de la lista */
+    Nodo Final=null;
+    /** Nodo auxiliar para operaciones */
+    Nodo aux=null;
+    /** Nuevo nodo a insertar */
+    Nodo nuevo;
+    /** Nodo actual que se está visualizando */
+    Nodo actual;
+    /** Formato de fecha para los registros */
     SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
     
+    /**
+     * Limpia los campos de entrada del formulario.
+     * Resetea el nombre, descripción y la imagen temporal.
+     */
     void limpiarCampos() {
         txtNombre.setText("");
         txtDescripcion.setText("");
         temporalImagen = null;
     }
     
+    /**
+     * Valida que los campos de entrada no estén vacíos.
+     * 
+     * @return true si todos los campos están completos, false en caso contrario
+     */
     boolean validarEntradas() {
         if (txtNombre.getText().trim().isEmpty() || 
             txtDescripcion.getText().trim().isEmpty()) {
@@ -33,6 +64,12 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         return true;
     }
     
+    /**
+     * Abre un diálogo para seleccionar un archivo de imagen.
+     * Permite seleccionar archivos con extensiones jpg, png y jpeg.
+     * 
+     * @return true si se seleccionó una imagen exitosamente, false si se canceló
+     */
     boolean cargarImagen() {
         JFileChooser explorador = new JFileChooser();
         explorador.addChoosableFileFilter(new FileNameExtensionFilter("Imágenes", "jpg", "png", "jpeg"));
@@ -46,20 +83,13 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         return false;
     }
     
-//    void setImageLabel(JLabel label, String imagePath) { //redimensionar imagen
-//        ImageIcon imageIcon = new ImageIcon(imagePath);
-//        Image img = imageIcon.getImage();
-//
-//        if (label.getWidth() > 0 && label.getHeight() > 0) {
-//            Image imagenEscalada =
-//                    img.getScaledInstance(label.getWidth(),
-//                            label.getHeight(), Image.SCALE_SMOOTH);  // Ajustar al tamaño del JLabel
-//            label.setIcon(new ImageIcon(imagenEscalada)); //establecer la imagen escalada en el JLabel
-//        } else {
-//            label.setIcon(imageIcon); //si no se puede redimensionar, mostrar la imagen sin escalado
-//        }
-//    }
-    
+    /**
+     * Escala y muestra una imagen en un JLabel manteniendo su proporción.
+     * La imagen se ajusta al tamaño del JLabel sin deformarse y se centra.
+     * 
+     * @param label El JLabel donde se mostrará la imagen
+     * @param imagePath La ruta del archivo de la imagen a mostrar
+     */
     void setImageLabel(JLabel label, String imagePath) { 
         ImageIcon imageIcon = new ImageIcon(imagePath);
         Image img = imageIcon.getImage();
@@ -93,6 +123,13 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         }
     }
     
+    /**
+     * Agrega una nueva imagen a la lista.
+     * Solicita la selección de un archivo de imagen y crea un nuevo nodo
+     * al final de la lista con los datos ingresados.
+     * 
+     * El método valida las entradas, solicita una imagen y actualiza la vista.
+     */
     void agregarImagen() {
         // Validar que no haya campos vacíos
         if (!validarEntradas()) return;
@@ -129,6 +166,16 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, "Imagen agregada con éxito.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
     }
     
+    /**
+     * Elimina la imagen actual de la lista.
+     * Maneja correctamente la eliminación en todos los casos:
+     * - Único elemento en la lista
+     * - Primer elemento
+     * - Último elemento
+     * - Elemento en medio de la lista
+     * 
+     * Solicita confirmación antes de eliminar.
+     */
     void eliminarImagen() { // Cambiamos el nombre del método
         if (actual == null) {
             JOptionPane.showMessageDialog(this, "La lista está vacía o no hay imagen seleccionada.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -169,6 +216,10 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, "Imagen eliminada correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE); 
     }
     
+    /**
+     * Navega al primer nodo de la lista.
+     * Actualiza la vista para mostrar la primera imagen.
+     */
     void irPrimero() {
         if (Frente == null) {
             JOptionPane.showMessageDialog(this, "La lista está vacía.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
@@ -178,6 +229,10 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         actualizarVistaActual();
     }
 
+    /**
+     * Navega al último nodo de la lista.
+     * Actualiza la vista para mostrar la última imagen.
+     */
     void irUltimo() {
         if (Final == null) {
             JOptionPane.showMessageDialog(this, "La lista está vacía.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
@@ -187,6 +242,10 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         actualizarVistaActual();
     }
 
+    /**
+     * Retrocede al nodo anterior en la lista.
+     * Si ya está en el primer nodo, muestra un mensaje informativo.
+     */
     void retrocederUno() {
         if (actual == null) {
             JOptionPane.showMessageDialog(this, "La lista está vacía.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
@@ -200,6 +259,10 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         }
     }
     
+    /**
+     * Avanza al nodo siguiente en la lista.
+     * Si ya está en el último nodo, muestra un mensaje informativo.
+     */
     void avanzarUno(){
         if (actual == null) {
             JOptionPane.showMessageDialog(null, "La lista está vacía.");
@@ -213,6 +276,11 @@ public class Lista_de_imagenes extends javax.swing.JFrame {
         }
     }
     
+    /**
+     * Actualiza la interfaz con los datos del nodo actual.
+     * Muestra el nombre, fecha, descripción e imagen del nodo actual.
+     * Si no hay nodo actual, limpia todos los campos.
+     */
     void actualizarVistaActual() {
         if (actual != null) {
             labNombre.setText(actual.getNombre());
