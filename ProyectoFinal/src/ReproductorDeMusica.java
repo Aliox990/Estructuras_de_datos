@@ -1,23 +1,31 @@
 import java.awt.CardLayout;
 
 /**
- *
- * @author Alonso
+ * Aplicación principal (ventana) del reproductor de música.
+ * <p>Combina la lógica de estructuras (playlist, cola, historial) con la
+ * interfaz gráfica Swing y la persistencia en archivos de texto.
+ * @author Christian Alonso Arevalos Gonzalez y Cesar de Jesus Becerra Vera
+ * @version 1.0
+ * @since 1.0
  */
 public class ReproductorDeMusica extends javax.swing.JFrame {
-    
+    /** Lista principal de canciones en memoria (lista doblemente enlazada). */
     private ListaPlaylist miLista = new ListaPlaylist();
+    /** Cola de reproducción compartida (deque). */
     private ColaReproduccion miCola = new ColaReproduccion(); // Bicola (Deque)
+    /** Pila de historial para regresar a la canción anterior. */
     private PilaHistorial miHistorial = new PilaHistorial();  // Pila (Stack)
-    
+    /** Motor nativo para reproducir WAV. */
     private ReproductorWAV motorAudio = new ReproductorWAV();
+    /** Nodo que indica la canción actualmente reproducida. */
     private Cancion cancionActual = null; // Monitorea qué nodo está sonando ahora
-    
-    // Banderas para bucles
+    /** Indica si la cola está en modo bucle */
     private boolean bucleColaActivo = false;
+    /** Indica si la canción actual está en modo bucle */
     private boolean bucleCancionActivo = false;
-    
+    /** Logger de la aplicación. */
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(ReproductorDeMusica.class.getName());
+    /** Temporizador Swing para refrescar la UI según la posición de audio. */
     private javax.swing.Timer cronometroAudio;
     
     /**
@@ -25,37 +33,29 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
      */
     public ReproductorDeMusica() {
         initComponents();
-        
+        inicializarBaseDatosUsuarios();
         cargarPlaylistDesdeArchivo();
-        
         inicializarCronometro();
-        
         panelPlaylist vistaPlaylist = new panelPlaylist();
         vistaPlaylist.configurarEstructuras(miLista, miCola);
-        
         miLista.cargarEnTabla(vistaPlaylist);
         panelCentral.add(vistaPlaylist, java.awt.BorderLayout.CENTER);
     }
     
     private void cargarPlaylistDesdeArchivo() {
-        java.io.File archivoPlaylist = new java.io.File("PlaylistCanciones.txt");
-        
+        java.io.File archivoPlaylist = new java.io.File("db", "PlaylistCanciones.txt");
         // Si el archivo no existe aún (primera ejecución), no hay nada que cargar
         if (!archivoPlaylist.exists()) {
             return;
         }
-        
         try {
             java.io.RandomAccessFile fichero = new java.io.RandomAccessFile(archivoPlaylist, "r");
             String registro;
-            
             // Limpia la estructura en memoria antes de cargar para evitar duplicados
             miLista = new ListaPlaylist();
-            
             // Lectura secuencial línea por línea
             while ((registro = fichero.readLine()) != null) {
                 String[] campos = registro.split(";");
-                
                 // Asegura que la línea tenga los 4 campos obligatorios del nodo
                 if (campos.length == 4) {
                     String titulo = campos[0];
@@ -68,9 +68,31 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 }
             }
             fichero.close();
-            
         } catch (java.io.IOException ex) {
             javax.swing.JOptionPane.showMessageDialog(this, "Error al sincronizar la base de datos musical", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void inicializarBaseDatosUsuarios() {
+        java.io.File archivo = new java.io.File("db", "BaseDatos.txt");
+        try {
+            java.io.File dbDir = archivo.getParentFile();
+            if (dbDir != null && !dbDir.exists()) {
+                dbDir.mkdirs();
+            }
+            boolean necesitaSemillas = !archivo.exists() || archivo.length() == 0;
+            if (!archivo.exists()) {
+                archivo.createNewFile();
+            }
+            if (necesitaSemillas) {
+                try (java.io.RandomAccessFile fichero = new java.io.RandomAccessFile(archivo, "rw")) {
+                    fichero.setLength(0);
+                    fichero.writeBytes("admin;1234;administrador\n");
+                    fichero.writeBytes("usuario1;0000;usuario\n");
+                }
+            }
+        } catch (java.io.IOException ex) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Error al inicializar la base de datos de usuarios", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -95,17 +117,14 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 if (motorAudio.isEstaReproduciendo()) {
                     long actualStr = motorAudio.getPosicionActual();
                     long totalStr = motorAudio.getDuracionTotal();
-                    
                     // Actualizar la barra de progreso
                     if (totalStr > 0) {
                         int progreso = (int) ((actualStr * 100) / totalStr);
                         jProgressBar1.setValue(progreso);
                     }
-                    
                     // Actualizar las etiquetas de texto
                     lblTiempoActual.setText(formatearTiempo(actualStr));
                     lblTiempoTotal.setText(formatearTiempo(totalStr));
-                    
                     // Si la canción llega a su final, el sistema simula un clic 
                     // en el botón "Siguiente", activando toda la lógica de la Cola o la Playlist.
                     if (motorAudio.alcanzoElFinal()) {
@@ -114,7 +133,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 }
             }
         });
-        
         // Encender el cronómetro de forma indefinida
         cronometroAudio.start();
     }
@@ -126,7 +144,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
         if (cancionActual != null) {
             // Actualiza los textos inferiores
             lblDetalleCancion.setText(cancionActual.getTitulo() + " - " + cancionActual.getArtista());
-            
             // Actualiza la portada lateral
             java.io.File archivoImagen = new java.io.File(cancionActual.getRutaImagen());
             if (archivoImagen.exists()) {
@@ -160,10 +177,8 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-
         panelContenedor = new javax.swing.JPanel();
         panelLogin = new javax.swing.JPanel();
         panelAcomodoLogin = new javax.swing.JPanel();
@@ -195,42 +210,31 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
         btnAnterior = new javax.swing.JButton();
         lblDetalleCancion = new javax.swing.JLabel();
         panelCentral = new javax.swing.JPanel();
-
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setMinimumSize(new java.awt.Dimension(800, 600));
-
         panelContenedor.setLayout(new java.awt.CardLayout());
-
         panelLogin.setBackground(new java.awt.Color(0, 51, 102));
         panelLogin.setLayout(new java.awt.GridBagLayout());
-
         panelAcomodoLogin.setBackground(new java.awt.Color(30, 30, 30));
         panelAcomodoLogin.setPreferredSize(new java.awt.Dimension(500, 375));
         panelAcomodoLogin.setLayout(new java.awt.BorderLayout());
-
         jLabel1.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         jLabel1.setForeground(new java.awt.Color(255, 255, 255));
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setText("Inicio de sesión");
         jLabel1.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 5, 5, 5));
         panelAcomodoLogin.add(jLabel1, java.awt.BorderLayout.PAGE_START);
-
         jPanel1.setBackground(new java.awt.Color(30, 30, 30));
-
         jLabel2.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel2.setForeground(new java.awt.Color(255, 255, 255));
         jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel2.setText("Usuario:");
-
         jLabel3.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel3.setForeground(new java.awt.Color(255, 255, 255));
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel3.setText("Contraseña:");
-
         txtUsuario.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-
         txtContra.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-
         btnIngresar.setBackground(new java.awt.Color(0, 153, 153));
         btnIngresar.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnIngresar.setForeground(new java.awt.Color(255, 255, 255));
@@ -241,7 +245,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnIngresarActionPerformed(evt);
             }
         });
-
         btnCrearUsuario.setBackground(new java.awt.Color(0, 153, 153));
         btnCrearUsuario.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnCrearUsuario.setForeground(new java.awt.Color(255, 255, 255));
@@ -252,7 +255,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnCrearUsuarioActionPerformed(evt);
             }
         });
-
         btnMostrarUsuarios.setBackground(new java.awt.Color(0, 153, 51));
         btnMostrarUsuarios.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnMostrarUsuarios.setForeground(new java.awt.Color(255, 255, 255));
@@ -263,7 +265,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnMostrarUsuariosActionPerformed(evt);
             }
         });
-
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -309,18 +310,12 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 .addComponent(btnMostrarUsuarios)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
-
         panelAcomodoLogin.add(jPanel1, java.awt.BorderLayout.CENTER);
-
         panelLogin.add(panelAcomodoLogin, new java.awt.GridBagConstraints());
-
         panelContenedor.add(panelLogin, "pantalla_login");
-
         panelReproductor.setLayout(new java.awt.BorderLayout());
-
         panelMenu.setBackground(new java.awt.Color(30, 30, 30));
         panelMenu.setPreferredSize(new java.awt.Dimension(160, 600));
-
         btnPlaylist.setBackground(new java.awt.Color(0, 153, 153));
         btnPlaylist.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnPlaylist.setForeground(new java.awt.Color(255, 255, 255));
@@ -331,7 +326,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnPlaylistActionPerformed(evt);
             }
         });
-
         btnCola.setBackground(new java.awt.Color(0, 153, 153));
         btnCola.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnCola.setForeground(new java.awt.Color(255, 255, 255));
@@ -342,7 +336,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnColaActionPerformed(evt);
             }
         });
-
         btnAdmin.setBackground(new java.awt.Color(0, 153, 153));
         btnAdmin.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnAdmin.setForeground(new java.awt.Color(255, 255, 255));
@@ -353,7 +346,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnAdminActionPerformed(evt);
             }
         });
-
         btnCerrarSesion.setBackground(new java.awt.Color(153, 0, 51));
         btnCerrarSesion.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnCerrarSesion.setForeground(new java.awt.Color(255, 255, 255));
@@ -364,12 +356,10 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnCerrarSesionActionPerformed(evt);
             }
         });
-
         lblPortada.setForeground(new java.awt.Color(255, 255, 255));
         lblPortada.setMaximumSize(new java.awt.Dimension(200, 200));
         lblPortada.setMinimumSize(new java.awt.Dimension(130, 130));
         lblPortada.setPreferredSize(new java.awt.Dimension(130, 130));
-
         javax.swing.GroupLayout panelMenuLayout = new javax.swing.GroupLayout(panelMenu);
         panelMenu.setLayout(panelMenuLayout);
         panelMenuLayout.setHorizontalGroup(
@@ -402,26 +392,19 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 .addComponent(lblPortada, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
-
         panelReproductor.add(panelMenu, java.awt.BorderLayout.LINE_START);
-
         jPanel2.setLayout(new java.awt.BorderLayout());
-
         jPanel3.setBackground(new java.awt.Color(25, 51, 80));
         jPanel3.setPreferredSize(new java.awt.Dimension(381, 135));
-
         jProgressBar1.setBackground(new java.awt.Color(204, 204, 204));
         jProgressBar1.setForeground(new java.awt.Color(255, 255, 255));
         jProgressBar1.setPreferredSize(new java.awt.Dimension(300, 10));
-
         lblTiempoActual.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         lblTiempoActual.setForeground(new java.awt.Color(255, 255, 255));
         lblTiempoActual.setText("00:00");
-
         lblTiempoTotal.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         lblTiempoTotal.setForeground(new java.awt.Color(255, 255, 255));
         lblTiempoTotal.setText("00:00");
-
         btnBucleCola.setBackground(new java.awt.Color(25, 51, 80));
         btnBucleCola.setForeground(new java.awt.Color(255, 255, 255));
         btnBucleCola.setText("🔁");
@@ -431,7 +414,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnBucleColaActionPerformed(evt);
             }
         });
-
         btnBucleCancion.setBackground(new java.awt.Color(25, 51, 80));
         btnBucleCancion.setForeground(new java.awt.Color(255, 255, 255));
         btnBucleCancion.setText("🔂");
@@ -441,7 +423,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnBucleCancionActionPerformed(evt);
             }
         });
-
         btnPlayPausa.setBackground(new java.awt.Color(25, 51, 80));
         btnPlayPausa.setForeground(new java.awt.Color(255, 255, 255));
         btnPlayPausa.setText("⏯");
@@ -451,7 +432,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnPlayPausaActionPerformed(evt);
             }
         });
-
         btnSiguiente.setBackground(new java.awt.Color(25, 51, 80));
         btnSiguiente.setForeground(new java.awt.Color(255, 255, 255));
         btnSiguiente.setText("⏭");
@@ -461,7 +441,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnSiguienteActionPerformed(evt);
             }
         });
-
         btnAnterior.setBackground(new java.awt.Color(25, 51, 80));
         btnAnterior.setForeground(new java.awt.Color(255, 255, 255));
         btnAnterior.setText("⏮");
@@ -471,10 +450,8 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 btnAnteriorActionPerformed(evt);
             }
         });
-
         lblDetalleCancion.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         lblDetalleCancion.setForeground(new java.awt.Color(255, 255, 255));
-
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
@@ -522,34 +499,25 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 .addComponent(jProgressBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(24, 24, 24))
         );
-
         jPanel2.add(jPanel3, java.awt.BorderLayout.PAGE_END);
-
         panelCentral.setLayout(new java.awt.BorderLayout());
         jPanel2.add(panelCentral, java.awt.BorderLayout.CENTER);
-
         panelReproductor.add(jPanel2, java.awt.BorderLayout.CENTER);
-
         panelContenedor.add(panelReproductor, "pantalla_reproductor");
-
         getContentPane().add(panelContenedor, java.awt.BorderLayout.CENTER);
-
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
     private void btnIngresarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnIngresarActionPerformed
         String usuario = txtUsuario.getText();
         String contra = new String(txtContra.getPassword());
-
         Ingresar(usuario, contra);
     }//GEN-LAST:event_btnIngresarActionPerformed
 
     private void btnCrearUsuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCrearUsuarioActionPerformed
         String usuario = txtUsuario.getText();
         String contra = new String(txtContra.getPassword());
-        
         registrarNuevoUsuario(usuario, contra, "usuario");
-        
         //Reiniciar campos de texto
         txtUsuario.setText("");
         txtContra.setText("");
@@ -563,11 +531,9 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
         // Detenr cancion si se esta reproduciendo
         motorAudio.detener();
         cancionActual = null;
-
         // Regresar a la pantalla de login de forma instantánea
         CardLayout cl = (CardLayout) panelContenedor.getLayout();
         cl.show(panelContenedor, "pantalla_login");
-
         // Limpiar los campos del login por seguridad
         txtUsuario.setText("");
         txtContra.setText("");
@@ -576,7 +542,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
     private void btnAdminActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAdminActionPerformed
         panelAdmin vistaAdmin = new panelAdmin();
         vistaAdmin.configurarEstructura(miLista);
-    
         // Removemr lo que este en el panel central y agrega el modulo admin
         panelCentral.removeAll();
         panelCentral.add(vistaAdmin, java.awt.BorderLayout.CENTER);
@@ -586,13 +551,10 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
 
     private void btnPlaylistActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnPlaylistActionPerformed
         cargarPlaylistDesdeArchivo();
-
         // Instanciar el panel de la playlist
         panelPlaylist vistaPlaylist = new panelPlaylist();
         vistaPlaylist.configurarEstructuras(miLista, miCola);
-        
         miLista.cargarEnTabla(vistaPlaylist);
-        
         // Limpia el centro y agrega la playlist
         panelCentral.removeAll();
         panelCentral.add(vistaPlaylist, java.awt.BorderLayout.CENTER);
@@ -614,19 +576,16 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
             btnPlayPausa.setSelected(false); // Descomprime el botón visualmente ya que no hay música
             return;
         }
-
         // Es la primera vez que se da Play o el reproductor estaba totalmente detenido
         if (cancionActual == null) {
             // Toma el primer nodo de la Lista Doblemente Enlazada
             cancionActual = miLista.getInicio();
-
             // Encender el reproductor con la ruta del archivo WAV
             motorAudio.reproducirDesdeCero(cancionActual.getRutaAudio());
             actualizarInterfazReproductor();
             btnPlayPausa.setText("⏸");
             return;
         }
-
         // Ya hay una canción en el flujo, alterna el estado del motor
         if (motorAudio.isEstaReproduciendo()) {
             motorAudio.pausar();
@@ -639,29 +598,24 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
 
     private void btnSiguienteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSiguienteActionPerformed
         if (cancionActual == null) return; // Si no hay nada sonando, no hacemos nada
-
         // Pioridad maxima: Bucle de canción única
         if (bucleCancionActivo) {
             motorAudio.reproducirDesdeCero(cancionActual.getRutaAudio());
             refrescarPantallaColaSiEstaActiva();
             return;
         }
-
         // PUSH: Guardar la canción actual en el Historial (Pila) antes de cambiar
         miHistorial.apilar(cancionActual.getTitulo(), cancionActual.getArtista(), 
                            cancionActual.getRutaAudio(), cancionActual.getRutaImagen());
-
         // Prioridad dos: Revisar si hay música en espera en la Cola (Queue)
         if (!miCola.estaVacia()) {
             // DEQUEUE: Saca la primera en la fila
             Cancion siguienteCola = miCola.desencolar();
-
             // Si el bucle de cola está activo, la volvemos a formar al final (ENQUEUE)
             if (bucleColaActivo) {
                 miCola.encolar(siguienteCola.getTitulo(), siguienteCola.getArtista(), 
                                siguienteCola.getRutaAudio(), siguienteCola.getRutaImagen());
             }
-
             cancionActual = siguienteCola;
             motorAudio.reproducirDesdeCero(cancionActual.getRutaAudio());
             actualizarInterfazReproductor();
@@ -670,7 +624,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
             refrescarPantallaColaSiEstaActiva();
             return;
         }
-
         // Prioridad tres: Avanza normalmente en la Playlist (Lista Doble)
         if (cancionActual.getSiguiente() != null) {
             cancionActual = cancionActual.getSiguiente();
@@ -690,25 +643,19 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
 
     private void btnAnteriorActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAnteriorActionPerformed
         if (cancionActual == null) return;
-
         // Revisar si hay algo en el historial (Pila)
         if (!miHistorial.estaVacia()) {
-
             // Usa la Bicola para guardar la canción actual enviándola al inicio de la espera
             miCola.devolverAlFrente(cancionActual.getTitulo(), cancionActual.getArtista(), 
                                     cancionActual.getRutaAudio(), cancionActual.getRutaImagen());
-
             // POP: Saca la última canción que escuchamos del historial
             Cancion cancionAnterior = miHistorial.desapilar();
-
             // La reproduce 
             cancionActual = cancionAnterior;
             motorAudio.reproducirDesdeCero(cancionActual.getRutaAudio());
             actualizarInterfazReproductor();
-
             btnPlayPausa.setText("⏸");
             btnPlayPausa.setSelected(true);
-
         } else {
             // Si la Pila está vacía (es la primera canción que suena), simplemente la reinicia
             motorAudio.reproducirDesdeCero(cancionActual.getRutaAudio());
@@ -717,11 +664,8 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
     }//GEN-LAST:event_btnAnteriorActionPerformed
 
     private void btnColaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnColaActionPerformed
-        
         panelCola vistaCola = new panelCola();
-
         vistaCola.actualizarPanel(miCola);
-
         panelCentral.removeAll();
         panelCentral.add(vistaCola, java.awt.BorderLayout.CENTER);
         panelCentral.revalidate();
@@ -729,7 +673,8 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
     }//GEN-LAST:event_btnColaActionPerformed
 
     /**
-     * @param args the command line arguments
+     * Punto de entrada de la aplicación.
+     * @param args los argumentos de línea de comandos (no utilizados)
      */
     public static void main(String args[]) {
         /* Set the Nimbus look and feel */
@@ -748,16 +693,19 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
             logger.log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
-
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> new ReproductorDeMusica().setVisible(true));
     }
-    
-    private void Ingresar(String usuario, String contra){
-        // Archivo de texto secuencial
-        java.io.File archivo = new java.io.File("BaseDatos.txt");
 
+    private void Ingresar(String usuario, String contra){
+        // Archivo de texto secuencial en carpeta db
+        java.io.File archivo = new java.io.File("db", "BaseDatos.txt");
         try {
+            // Asegurar que exista la carpeta db
+            java.io.File dbDir = archivo.getParentFile();
+            if (dbDir != null && !dbDir.exists()) {
+                dbDir.mkdirs();
+            }
             // Crear el archivo si no existe e inserta accesos de prueba
             if (!archivo.exists()) {
                 archivo.createNewFile();
@@ -766,12 +714,10 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 f.writeBytes("usuario1;0000;usuario\n");
                 f.close();
             }
-
             java.io.RandomAccessFile fichero = new java.io.RandomAccessFile(archivo, "r");
             String registro;
             boolean accesoConcedido = false;
             String rolObtenido = "";
-
             while ((registro = fichero.readLine()) != null) {
                 String[] campos = registro.split(";");
                 if (campos.length == 3) {
@@ -783,7 +729,6 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 }
             }
             fichero.close();
-
             if (accesoConcedido) {
                 // --- CONTROL DE ROLES ---
                 if (rolObtenido.equalsIgnoreCase("usuario")) {
@@ -792,16 +737,13 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 } else {
                     btnAdmin.setVisible(true);
                 }
-
                 // --- CAMBIO DE PANTALLA ---
                 // Recuperar el manejador de la baraja y le pedimos mostrar la carta del reproductor
                 CardLayout cl = (CardLayout) panelContenedor.getLayout();
                 cl.show(panelContenedor, "pantalla_reproductor");
-
             } else {
                 javax.swing.JOptionPane.showMessageDialog(this, "Usuario o contraseña incorrectos", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
             }
-
         } catch (java.io.IOException ex) {
             javax.swing.JOptionPane.showMessageDialog(this, "Error de lectura de archivo", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
         }
@@ -813,38 +755,33 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
             javax.swing.JOptionPane.showMessageDialog(this, "No se permiten campos vacios", "Advertencia", javax.swing.JOptionPane.WARNING_MESSAGE);
             return;
         }
-
-        java.io.File archivo = new java.io.File("BaseDatos.txt");
+        java.io.File archivo = new java.io.File("db", "BaseDatos.txt");
         try {
+            java.io.File dbDir = archivo.getParentFile();
+            if (dbDir != null && !dbDir.exists()) dbDir.mkdirs();
+            if (!archivo.exists()) archivo.createNewFile();
             java.io.RandomAccessFile fichero = new java.io.RandomAccessFile(archivo, "rw");
-
             // Posicionar el puntero al final para insercion secuencial
             fichero.seek(fichero.length());
-
             // Escribir la linea con el formato establecido
             fichero.writeBytes(usuario + ";" + contra + ";" + rol + "\n");
             fichero.close();
-
             javax.swing.JOptionPane.showMessageDialog(this, "Usuario creado exitosamente con rol: " + rol);
-
         } catch (java.io.IOException ex) {
             javax.swing.JOptionPane.showMessageDialog(this, "Error al escribir en la base de datos", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
         }
     }
     
     private void mostrarUsuariosRegistrados() {
-        java.io.File archivo = new java.io.File("BaseDatos.txt");
-
+        java.io.File archivo = new java.io.File("db", "BaseDatos.txt");
         if (!archivo.exists()) {
             javax.swing.JOptionPane.showMessageDialog(this, "No hay usuarios registrados aun");
             return;
         }
-
         try {
             java.io.RandomAccessFile fichero = new java.io.RandomAccessFile(archivo, "r");
             String registro;
             StringBuilder listaCompleta = new StringBuilder("=== USUARIOS EN EL SISTEMA ===\n\n");
-
             while ((registro = fichero.readLine()) != null) {
                 String[] campos = registro.split(";");
                 if (campos.length == 3) {
@@ -854,45 +791,74 @@ public class ReproductorDeMusica extends javax.swing.JFrame {
                 }
             }
             fichero.close();
-
             javax.swing.JOptionPane.showMessageDialog(this, listaCompleta.toString(), "Registros Persistentes", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-
         } catch (java.io.IOException ex) {
             javax.swing.JOptionPane.showMessageDialog(this, "Error al leer la base de datos", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
         }
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    /** Botón para abrir el panel de administración */
     private javax.swing.JButton btnAdmin;
+    /** Botón para reproducir la canción anterior */
     private javax.swing.JButton btnAnterior;
+    /** Toggle para activar/desactivar el bucle de la canción */
     private javax.swing.JToggleButton btnBucleCancion;
+    /** Toggle para activar/desactivar el bucle de la cola */
     private javax.swing.JToggleButton btnBucleCola;
+    /** Botón para cerrar sesión del usuario actual */
     private javax.swing.JButton btnCerrarSesion;
+    /** Botón para mostrar la cola */
     private javax.swing.JButton btnCola;
+    /** Botón para crear un nuevo usuario */
     private javax.swing.JButton btnCrearUsuario;
+    /** Botón para intentar ingresar con credenciales */
     private javax.swing.JButton btnIngresar;
+    /** Botón para mostrar los usuarios registrados */
     private javax.swing.JButton btnMostrarUsuarios;
+    /** Botón/toggle para reproducir/pausar */
     private javax.swing.JToggleButton btnPlayPausa;
+    /** Botón para cambiar a la vista playlist */
     private javax.swing.JButton btnPlaylist;
+    /** Botón para reproducir la siguiente canción */
     private javax.swing.JButton btnSiguiente;
+    /** Etiqueta auxiliar usada en diseño (NetBeans). */
     private javax.swing.JLabel jLabel1;
+    /** Etiqueta auxiliar usada en diseño (NetBeans). */
     private javax.swing.JLabel jLabel2;
+    /** Etiqueta auxiliar usada en diseño (NetBeans). */
     private javax.swing.JLabel jLabel3;
+    /** Panel auxiliar 1 (contenedor de componentes) */
     private javax.swing.JPanel jPanel1;
+    /** Panel auxiliar 2 (contenedor de componentes) */
     private javax.swing.JPanel jPanel2;
+    /** Panel auxiliar 3 (contenedor de componentes) */
     private javax.swing.JPanel jPanel3;
+    /** Barra de progreso que muestra el avance de la canción */
     private javax.swing.JProgressBar jProgressBar1;
+    /** Etiqueta que muestra título y artista de la canción actual */
     private javax.swing.JLabel lblDetalleCancion;
+    /** Etiqueta que muestra la portada de la canción actual */
     private javax.swing.JLabel lblPortada;
+    /** Etiqueta con el tiempo transcurrido (MM:SS) */
     private javax.swing.JLabel lblTiempoActual;
+    /** Etiqueta con la duración total de la canción (MM:SS) */
     private javax.swing.JLabel lblTiempoTotal;
+    /** Panel que acomoda los elementos del login */
     private javax.swing.JPanel panelAcomodoLogin;
+    /** Panel central donde se intercambian vistas (playlist/cola) */
     private javax.swing.JPanel panelCentral;
+    /** Panel contenedor principal de la ventana */
     private javax.swing.JPanel panelContenedor;
+    /** Panel que contiene la vista de login */
     private javax.swing.JPanel panelLogin;
+    /** Panel del menú lateral */
     private javax.swing.JPanel panelMenu;
+    /** Panel que engloba el reproductor y sus controles */
     private javax.swing.JPanel panelReproductor;
+    /** Campo de contraseña del login */
     private javax.swing.JPasswordField txtContra;
+    /** Campo de usuario del login */
     private javax.swing.JTextField txtUsuario;
     // End of variables declaration//GEN-END:variables
 }

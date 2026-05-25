@@ -1,0 +1,2 @@
+admin;1234;administrador
+usuario1;0000;usuario

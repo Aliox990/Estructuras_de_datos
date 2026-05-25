@@ -1,9 +1,15 @@
 /**
- *
- * @author Alonso
+ * Panel de administración que expone la interfaz para añadir/eliminar canciones
+ * y gestionar la persistencia de la playlist.
+ * <p>Incluye validaciones de archivos multimedia y escribe en
+ * {@code db/PlaylistCanciones.txt}.
+ * @author Christian Alonso Arevalos Gonzalez y Cesar de Jesus Becerra Vera
+ * @version 1.0
+ * @since 1.0
  */
+
 public class panelAdmin extends javax.swing.JPanel {
-    
+    /** Referencia a la lista de reproducción que este panel administra. */
     private ListaPlaylist listaGlobal;
 
     /**
@@ -13,17 +19,27 @@ public class panelAdmin extends javax.swing.JPanel {
         initComponents();
     }
     
+    /**
+     * Configura la lista que este panel administrará y persistirá.
+     * @param lista instancia de {@link ListaPlaylist}
+     */
     public void configurarEstructura(ListaPlaylist lista) {
         this.listaGlobal = lista;
     }
     
+    /**
+     * Reescribe el archivo persistente con el contenido actual de la lista.
+     * Este método trunca y vuelve a escribir `db/PlaylistCanciones.txt`.
+     */
     private void reescribirArchivoPersistente() {
-        java.io.File baseDatosPlaylist = new java.io.File("PlaylistCanciones.txt");
+        java.io.File baseDatosPlaylist = new java.io.File("db", "PlaylistCanciones.txt");
         try {
+            // Asegurar que exista la carpeta db
+            java.io.File dbDir = baseDatosPlaylist.getParentFile();
+            if (dbDir != null && !dbDir.exists()) dbDir.mkdirs();
             // Al usar el modo "rw" y aplicar setLength(0), trunca el archivo para limpiarlo por completo
             java.io.RandomAccessFile escritor = new java.io.RandomAccessFile(baseDatosPlaylist, "rw");
             escritor.setLength(0);
-
             // Recorre la estructura de datos para guardar los nodos que aun existen
             Cancion actual = listaGlobal.getInicio();
             while (actual != null) {
@@ -37,21 +53,19 @@ public class panelAdmin extends javax.swing.JPanel {
         }
     }
     
+    /**
+     * Abre un JFileChooser para seleccionar un archivo de audio WAV y actualiza el campo de texto correspondiente.
+     */
     private void buscarAudio(){
         javax.swing.JFileChooser selector = new javax.swing.JFileChooser();
-        
         // Abrir el explorador directamente en la carpeta del proyecto para mayor comodidad
         selector.setCurrentDirectory(new java.io.File(System.getProperty("user.dir")));
-    
         javax.swing.filechooser.FileNameExtensionFilter filtro = 
             new javax.swing.filechooser.FileNameExtensionFilter("Archivos de Audio WAV" , "wav");
         selector.setFileFilter(filtro);
-
         int resultado = selector.showOpenDialog(this);
-
         if (resultado == javax.swing.JFileChooser.APPROVE_OPTION) {
             java.io.File archivoSeleccionado = selector.getSelectedFile();
-            
             String rutaAbsoluta = archivoSeleccionado.getAbsolutePath();
             String rutaProyecto = System.getProperty("user.dir");
             
@@ -67,22 +81,20 @@ public class panelAdmin extends javax.swing.JPanel {
         }
     }
     
+    /**
+     * Abre un JFileChooser para seleccionar un archivo de imagen JPG o PNG y actualiza el campo de texto correspondiente.
+     */
     private void buscarImagen(){
         javax.swing.JFileChooser selector = new javax.swing.JFileChooser();
         selector.setCurrentDirectory(new java.io.File(System.getProperty("user.dir")));
-        
         javax.swing.filechooser.FileNameExtensionFilter filtro = 
             new javax.swing.filechooser.FileNameExtensionFilter("Imágenes del álbum JPG o PNG" , "jpg" , "png");
         selector.setFileFilter(filtro);
-
         int resultado = selector.showOpenDialog(this);
-
         if (resultado == javax.swing.JFileChooser.APPROVE_OPTION) {
             java.io.File archivoSeleccionado = selector.getSelectedFile();
-            
             String rutaAbsoluta = archivoSeleccionado.getAbsolutePath();
             String rutaProyecto = System.getProperty("user.dir");
-            
             if (rutaAbsoluta.startsWith(rutaProyecto)) {
                 String rutaRelativa = rutaAbsoluta.substring(rutaProyecto.length() + 1);
                 txtRutaImagen.setText(rutaRelativa);
@@ -92,41 +104,37 @@ public class panelAdmin extends javax.swing.JPanel {
         }
     }
     
+    /**
+     * Guarda la información de una nueva canción en la base de datos.
+     */
     private void guardarCancion(){
         String titulo = txtTitulo.getText().trim();
         String artista = txtArtista.getText().trim();
         String rutaAudio = txtRutaAudio.getText().trim();
         String rutaImagen = txtRutaImagen.getText().trim();
-
         // Validacion de campos vacios
         if (titulo.isEmpty() || artista.isEmpty() || rutaAudio.isEmpty() || rutaImagen.isEmpty()) {
             javax.swing.JOptionPane.showMessageDialog(this, "Error todos los campos deben ser llenados" , "Advertencia" , javax.swing.JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         // Validacion de existencia fisica de archivos multimedia
         java.io.File archivoMusica = new java.io.File(rutaAudio);
         java.io.File archivoFoto = new java.io.File(rutaImagen);
-
         if (!archivoMusica.exists() || !archivoFoto.exists()) {
             javax.swing.JOptionPane.showMessageDialog(this, "Error las rutas de archivos especificadas no existen" , "Archivo No Encontrado" , javax.swing.JOptionPane.ERROR_MESSAGE);
             return;
         }
-
-        // Archivo donde se centralizan las canciones de la playlist
-        java.io.File baseDatosPlaylist = new java.io.File("PlaylistCanciones.txt");
-
+        // Archivo donde se centralizan las canciones de la playlist (carpeta db)
+        java.io.File baseDatosPlaylist = new java.io.File("db", "PlaylistCanciones.txt");
         try {
-            // Asegurar que el archivo de datos exista
-            if (!baseDatosPlaylist.exists()) {
-                baseDatosPlaylist.createNewFile();
-            }
-
+            // Asegurar que exista la carpeta db y el archivo de datos
+            java.io.File dbDir = baseDatosPlaylist.getParentFile();
+            if (dbDir != null && !dbDir.exists()) dbDir.mkdirs();
+            if (!baseDatosPlaylist.exists()) baseDatosPlaylist.createNewFile();
             // Validacion de Canciones Duplicadas
             java.io.RandomAccessFile lector = new java.io.RandomAccessFile(baseDatosPlaylist, "r");
             String registroExistente;
             boolean cancionDuplicada = false;
-
             while ((registroExistente = lector.readLine()) != null) {
                 String[] campos = registroExistente.split(";");
                 if (campos.length >= 1) {
@@ -138,28 +146,22 @@ public class panelAdmin extends javax.swing.JPanel {
                 }
             }
             lector.close();
-
             if (cancionDuplicada) {
                 javax.swing.JOptionPane.showMessageDialog(this, "Error ya existe una cancion registrada con ese mismo titulo" , "Registro Duplicado" , javax.swing.JOptionPane.WARNING_MESSAGE);
                 return;
             }
-
             // Guardado Secuencial Persistente
             java.io.RandomAccessFile escritor = new java.io.RandomAccessFile(baseDatosPlaylist, "rw");
             escritor.seek(escritor.length()); // Se mueve al final absoluto del archivo
-
             // Escribe los cuatro atributos del nodo separados por punto y coma
             escritor.writeBytes(titulo + ";" + artista + ";" + rutaAudio + ";" + rutaImagen + "\n");
             escritor.close();
-
             javax.swing.JOptionPane.showMessageDialog(this, "Cancion añadida exitosamente a la base de datos");
-
             // Limpia el formulario para una nueva captura
             txtTitulo.setText("");
             txtArtista.setText("");
             txtRutaAudio.setText("");
             txtRutaImagen.setText("");
-
         } catch (java.io.IOException ex) {
             javax.swing.JOptionPane.showMessageDialog(this, "Ocurrio un error al gestionar el archivo de datos" , "Error" , javax.swing.JOptionPane.ERROR_MESSAGE);
         }
@@ -170,10 +172,8 @@ public class panelAdmin extends javax.swing.JPanel {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
@@ -188,38 +188,29 @@ public class panelAdmin extends javax.swing.JPanel {
         btnGuardarCancion = new javax.swing.JButton();
         btnEliminarCancion = new javax.swing.JButton();
         btnEliminarPlaylist = new javax.swing.JButton();
-
         setBackground(new java.awt.Color(0, 51, 102));
-
         jLabel1.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
         jLabel1.setForeground(new java.awt.Color(255, 255, 255));
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel1.setText("Admin");
-
         jLabel2.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel2.setForeground(new java.awt.Color(255, 255, 255));
         jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel2.setText("Titulo:");
-
         jLabel3.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel3.setForeground(new java.awt.Color(255, 255, 255));
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel3.setText("Artista:");
-
         jLabel4.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel4.setForeground(new java.awt.Color(255, 255, 255));
         jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel4.setText("Archivo Audio:");
-
         jLabel5.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         jLabel5.setForeground(new java.awt.Color(255, 255, 255));
         jLabel5.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel5.setText("Imagen:");
-
         txtTitulo.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-
         txtArtista.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
-
         txtRutaAudio.setEditable(false);
         txtRutaAudio.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         txtRutaAudio.setFocusable(false);
@@ -228,11 +219,9 @@ public class panelAdmin extends javax.swing.JPanel {
                 txtRutaAudioActionPerformed(evt);
             }
         });
-
         txtRutaImagen.setEditable(false);
         txtRutaImagen.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         txtRutaImagen.setFocusable(false);
-
         btnBuscarAudio.setBackground(new java.awt.Color(102, 102, 102));
         btnBuscarAudio.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnBuscarAudio.setForeground(new java.awt.Color(255, 255, 255));
@@ -243,7 +232,6 @@ public class panelAdmin extends javax.swing.JPanel {
                 btnBuscarAudioActionPerformed(evt);
             }
         });
-
         btnBuscarImagen.setBackground(new java.awt.Color(102, 102, 102));
         btnBuscarImagen.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnBuscarImagen.setForeground(new java.awt.Color(255, 255, 255));
@@ -254,7 +242,6 @@ public class panelAdmin extends javax.swing.JPanel {
                 btnBuscarImagenActionPerformed(evt);
             }
         });
-
         btnGuardarCancion.setBackground(new java.awt.Color(0, 102, 51));
         btnGuardarCancion.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnGuardarCancion.setForeground(new java.awt.Color(255, 255, 255));
@@ -265,7 +252,6 @@ public class panelAdmin extends javax.swing.JPanel {
                 btnGuardarCancionActionPerformed(evt);
             }
         });
-
         btnEliminarCancion.setBackground(new java.awt.Color(153, 0, 51));
         btnEliminarCancion.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnEliminarCancion.setForeground(new java.awt.Color(255, 255, 255));
@@ -276,7 +262,6 @@ public class panelAdmin extends javax.swing.JPanel {
                 btnEliminarCancionActionPerformed(evt);
             }
         });
-
         btnEliminarPlaylist.setBackground(new java.awt.Color(153, 0, 51));
         btnEliminarPlaylist.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
         btnEliminarPlaylist.setForeground(new java.awt.Color(255, 255, 255));
@@ -287,7 +272,6 @@ public class panelAdmin extends javax.swing.JPanel {
                 btnEliminarPlaylistActionPerformed(evt);
             }
         });
-
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -370,15 +354,12 @@ public class panelAdmin extends javax.swing.JPanel {
 
     private void btnEliminarCancionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarCancionActionPerformed
         String tituloParaBorrar = txtTitulo.getText().trim();
-    
         if (tituloParaBorrar.isEmpty()) {
             javax.swing.JOptionPane.showMessageDialog(this, "Por favor, escribe el título exacto de la canción que deseas eliminar.", "Campos Vacíos", javax.swing.JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         // Ejecuta la baja en la estructura de datos lineal
         boolean exito = listaGlobal.eliminarPorTitulo(tituloParaBorrar);
-
         if (exito) {
             // Si el nodo se desconectó con éxito en RAM, sincroniza el archivo TXT
             String rutaProyecto = System.getProperty("user.dir");
@@ -394,14 +375,11 @@ public class panelAdmin extends javax.swing.JPanel {
         int confirmacion = javax.swing.JOptionPane.showConfirmDialog(this, 
         "¿Estás completamente seguro de que deseas eliminar la playlist entera? Esta acción no se puede deshacer.", 
         "Advertencia Crítica", javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE);
-
         if (confirmacion == javax.swing.JOptionPane.YES_OPTION) {
             // Vacia la estructura en memoria RAM
             listaGlobal.vaciarLista();
-
             // Sobrescribir el archivo físico dejándolo en cero bytes
             reescribirArchivoPersistente();
-
             javax.swing.JOptionPane.showMessageDialog(this, "La playlist completa ha sido eliminada.");
         }
     }//GEN-LAST:event_btnEliminarPlaylistActionPerformed
@@ -410,21 +388,34 @@ public class panelAdmin extends javax.swing.JPanel {
         // TODO add your handling code here:
     }//GEN-LAST:event_txtRutaAudioActionPerformed
 
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    /** Botón para examinar y seleccionar archivo de audio */
     private javax.swing.JButton btnBuscarAudio;
+    /** Botón para examinar y seleccionar imagen de portada */
     private javax.swing.JButton btnBuscarImagen;
+    /** Botón para eliminar la canción indicada del almacenamiento */
     private javax.swing.JButton btnEliminarCancion;
+    /** Botón para eliminar toda la playlist persistida */
     private javax.swing.JButton btnEliminarPlaylist;
+    /** Botón para guardar la canción en la base de datos */
     private javax.swing.JButton btnGuardarCancion;
+    /** Título principal del panel (etiqueta 'Admin'). */
     private javax.swing.JLabel jLabel1;
+    /** Etiqueta para el campo 'Título:' */
     private javax.swing.JLabel jLabel2;
+    /** Etiqueta para el campo 'Artista:' */
     private javax.swing.JLabel jLabel3;
+    /** Etiqueta para el campo 'Archivo Audio:' */
     private javax.swing.JLabel jLabel4;
+    /** Etiqueta para el campo 'Imagen:' */
     private javax.swing.JLabel jLabel5;
+    /** Campo de texto para el nombre del artista */
     private javax.swing.JTextField txtArtista;
+    /** Campo de texto que contiene la ruta al archivo de audio (solo lectura) */
     private javax.swing.JTextField txtRutaAudio;
+    /** Campo de texto que contiene la ruta a la imagen de portada (solo lectura) */
     private javax.swing.JTextField txtRutaImagen;
+    /** Campo de texto para el título de la canción */
     private javax.swing.JTextField txtTitulo;
     // End of variables declaration//GEN-END:variables
 }

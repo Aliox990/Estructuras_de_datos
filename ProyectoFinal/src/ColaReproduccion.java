@@ -1,11 +1,18 @@
 /**
- * @author Alonso
+ * Cola de reproducción (FIFO) que gestiona la fila de canciones a reproducir.
+ * <p>Proporciona operaciones de encolar, desencolar y eliminación por título.
+ * @author Christian Alonso Arevalos Gonzalez y Cesar de Jesus Becerra Vera
+ * @version 1.0
+ * @since 1.0
  */
 public class ColaReproduccion {
     // Apuntadores
     private Cancion frente;
     private Cancion fin;
 
+    /**
+     * Crea una cola de reproducción vacía.
+     */
     public ColaReproduccion() {
         this.frente = null;
         this.fin = null;
@@ -13,11 +20,14 @@ public class ColaReproduccion {
 
     /**
      * Operación Enqueue: Inserta una canción al final de la cola
+     * @param titulo Nombre de la canción
+     * @param artista Nombre del artista
+     * @param rutaAudio Ruta al archivo de audio
+     * @param rutaImagen Ruta a la imagen de portada
      */
     public void encolar(String titulo, String artista, String rutaAudio, String rutaImagen) {
         // Crea un nodo completamente nuevo e independiente para no romper la playlist
         Cancion nuevoNodo = new Cancion(titulo, artista, rutaAudio, rutaImagen);
-        
         // Si la cola está vacía, el nuevo nodo es tanto el frente como el fin
         if (estaVacia()) {
             frente = nuevoNodo;
@@ -39,35 +49,34 @@ public class ColaReproduccion {
         if (estaVacia()) {
             return null;
         }
-        
         // Guarda una referencia a la cancion del frente para regresarla
         Cancion cancionSaliendo = frente;
-        
         // Mover el frente a la siguiente cancion de la fila
         frente = frente.getSiguiente();
-        
         // Si la cola se quedó vacía tras el movimiento, el fin también debe ser null
         if (frente == null) {
             fin = null;
         } else {
             frente.setAnterior(null); // Romper el enlace con la cancion que va saliendo
         }
-        
         // Limpia los apuntadores del nodo que sale por seguridad
         cancionSaliendo.setSiguiente(null);
         cancionSaliendo.setAnterior(null);
-        
         return cancionSaliendo;
     }
     
     /**
      * Operación especial de Bicola (Deque): Inserta una canción al frente de la fila.
      * Se usa para devolver la canción interrumpida cuando el usuario presiona "Anterior".
+        *
+        * @param titulo Nombre de la canción
+        * @param artista Nombre del artista
+        * @param rutaAudio Ruta al archivo de audio
+        * @param rutaImagen Ruta a la imagen de portada
      */
     public void devolverAlFrente(String titulo, String artista, String rutaAudio, String rutaImagen) {
         // Creamos la instancia independiente
         Cancion nodoDevuelto = new Cancion(titulo, artista, rutaAudio, rutaImagen);
-        
         // Si la cola estaba vacía, funciona igual que una inserción normal
         if (estaVacia()) {
             frente = nodoDevuelto;
@@ -86,10 +95,11 @@ public class ColaReproduccion {
     
     /**
      * Busca una canción por título en la cola de espera y la desconecta de la estructura
+        * @param titulo título exacto a buscar
+        * @return {@code true} si se encontró y eliminó, {@code false} en caso contrario
      */
     public boolean eliminarPorTitulo(String titulo) {
         Cancion actual = frente;
-        
         while (actual != null) {
             if (actual.getTitulo().equalsIgnoreCase(titulo)) {
                 // Es el primer elemento de la cola
@@ -124,12 +134,17 @@ public class ColaReproduccion {
 
     /**
      * Verifica si no hay canciones en espera
+     * @return {@code true} si la cola está vacía
      */
     public boolean estaVacia() {
         return frente == null;
     }
 
     // Getter para poder listar la cola en la interfaz grafica
+    /**
+     * Devuelve la canción que está al frente de la cola sin retirarla.
+     * @return nodo en el frente o {@code null} si la cola está vacía
+     */
     public Cancion getFrente() {
         return frente;
     }

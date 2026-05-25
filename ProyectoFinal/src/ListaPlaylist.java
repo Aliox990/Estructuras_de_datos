@@ -1,12 +1,19 @@
 /**
- * Estructura de Datos: Lista Doblemente Enlazada para gestionar las canciones
+ * Lista doblemente enlazada que representa la playlist principal del reproductor.
+ * <p>Soporta inserciones, búsqueda y eliminación por título, y puede cargar
+ * su contenido en la interfaz gráfica mediante {@link panelPlaylist}.
+ * @author Christian Alonso Arevalos Gonzalez y Cesar de Jesus Becerra Vera
+ * @version 1.0
+ * @since 1.0
  */
 public class ListaPlaylist {
-    
     // Apuntadores principales de la lista doble
     private Cancion inicio;
     private Cancion fin;
 
+    /**
+     * Crea una lista de reproducción vacía.
+     */
     public ListaPlaylist() {
         this.inicio = null;
         this.fin = null;
@@ -14,10 +21,13 @@ public class ListaPlaylist {
 
     /**
      * Método para insertar una nueva canción al final de la lista
+     * @param titulo Nombre de la canción
+     * @param artista Nombre del artista
+     * @param rutaAudio Ruta al archivo de audio
+     * @param rutaImagen Ruta a la imagen de la canción
      */
     public void insertarAlFinal(String titulo, String artista, String rutaAudio, String rutaImagen) {
         Cancion nuevaCancion = new Cancion(titulo, artista, rutaAudio, rutaImagen);
-        
         // Si la lista está vacía, el nuevo nodo es tanto el inicio como el fin
         if (inicio == null) {
             inicio = nuevaCancion;
@@ -36,13 +46,12 @@ public class ListaPlaylist {
 
     /**
      * Recorre la lista doble de principio a fin y actualiza la JTable visual
+        * @param panelVisual panel donde se pondrán las filas
      */
     public void cargarEnTabla(panelPlaylist panelVisual) {
         // Limpia la tabla del panel para evitar filas duplicadas al refrescar
         panelVisual.limpiarTabla();
-        
         Cancion actual = inicio;
-        
         // Recorrido secuencial clásico de nodos
         while (actual != null) {
             // Envia los datos
@@ -58,23 +67,27 @@ public class ListaPlaylist {
     
     /**
      * Recorre la lista buscando un nodo por su título exacto
+        * @param titulo título a buscar
+        * @return la {@link Cancion} encontrada o {@code null} si no existe
      */
     public Cancion buscarPorTitulo(String titulo) {
         Cancion actual = inicio;
-        
         while (actual != null) {
             if (actual.getTitulo().equalsIgnoreCase(titulo)) {
                 return actual; // Retorna el nodo completo con todos sus datos
             }
             actual = actual.getSiguiente();
         }
-        
         return null; // Si termina de buscar y no hay coincidencias
     }
     
+    /**
+     * Elimina la primera ocurrencia de una canción por su título exacto.
+     * @param titulo título a eliminar
+     * @return {@code true} si se eliminó correctamente
+     */
     public boolean eliminarPorTitulo(String titulo) {
         Cancion actual = inicio;
-
         while (actual != null) {
             if (actual.getTitulo().equalsIgnoreCase(titulo)) {
                 // Es el único elemento o el primero de la lista
@@ -107,16 +120,27 @@ public class ListaPlaylist {
         return false; // No se encontró la canción
     }
 
+    /**
+     * Vacía completamente la lista.
+     */
     public void vaciarLista() {
         inicio = null;
         fin = null;
     }
 
     // Métodos de acceso para que el reproductor sepa dónde empezar a sonar
+    /**
+     * Obtiene el primer elemento de la lista.
+     * @return nodo inicial o {@code null}
+     */
     public Cancion getInicio() {
         return inicio;
     }
 
+    /**
+     * Obtiene el último elemento de la lista.
+     * @return nodo final o {@code null}
+     */
     public Cancion getFin() {
         return fin;
     }
